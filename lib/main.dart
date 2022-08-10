@@ -27,31 +27,41 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  PageController pageController = PageController();
-
-  String result = '';
+  final textController = TextEditingController();
+  int? selectedId;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          IconButton(
-              onPressed: () async {
-                var outPut = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AddTodoScreen(),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          selectedId != null
+              ? await DatabaseHelper.instance.updateTodo(
+                  Todo(
+                    id: selectedId,
+                    title: textController.text,
+                  ),
+                )
+              : await DatabaseHelper.instance.addTodo(
+                  Todo(
+                    title: textController.text,
                   ),
                 );
-                setState(() {
-                  result = outPut;
-                });
-              },
-              icon: Icon(Icons.add))
-        ],
-        title: const Text(
-          'Sqflite todo app',
+          setState(() {
+            textController.clear();
+            selectedId = null;
+          });
+        },
+        child: Icon(
+          Icons.save,
+        ),
+      ),
+      appBar: AppBar(
+        title: TextField(
+          controller: textController,
+          decoration: InputDecoration(
+            hintText: 'please add your todo...',
+          ),
         ),
       ),
       body: Center(
@@ -60,7 +70,7 @@ class _HomePageState extends State<HomePage> {
           builder: (BuildContext context, AsyncSnapshot<List<Todo>> snapshot) {
             if (!snapshot.hasData) {
               return Center(
-                child: Text('loading..'),
+                child: CircularProgressIndicator(),
               );
             }
             return snapshot.data!.isEmpty
@@ -71,8 +81,29 @@ class _HomePageState extends State<HomePage> {
                     children: snapshot.data!.map(
                       (todo) {
                         return Center(
-                          child: ListTile(
-                            title: Text(todo.title!),
+                          child: Card(
+                            color: selectedId == todo.id
+                                ? Colors.white70
+                                : Colors.white,
+                            child: ListTile(
+                              onTap: () {
+                                setState(() {
+                                  if (selectedId == null) {
+                                    textController.text = todo.title!;
+                                    selectedId = todo.id;
+                                  } else {
+                                    textController.clear();
+                                    selectedId = null;
+                                  }
+                                });
+                              },
+                              onLongPress: () {
+                                setState(() {
+                                  DatabaseHelper.instance.removeTodo(todo.id!);
+                                });
+                              },
+                              title: Text(todo.title!),
+                            ),
                           ),
                         );
                       },
